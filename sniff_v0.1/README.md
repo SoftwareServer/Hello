@@ -9,16 +9,12 @@ sniff
 二、sniff.cpp  
 	int getINT16(char *)：取得收到的占2字节的数据  
 	int getINT32(char *)：取得收到的占4字节的数据  
-	typedef struct data_stu{}__attribute__((packed))ORG_DATA_STU：此结构体用于解析udp接收到的通信板数据，包括单播/广播，链路状态信息  
+	typedef struct data_stu{}__attribute__((packed))ORG_DATA_STU：此结构体用于解析udp接收到的通信板数据  
 	struct Unicast{}：此结构体用于将解析出来的单播数据保存到用于查询方法的该类型向量中  
 	struct Multicast{}：此结构体用于将解析出来的广播数据保存到用于查询方法的该类型向量中  
 	struct Link{}：此结构体用于将解析出来的链路状态数据保存到用于查询方法的该类型向量中  
-	void start_cmd()：向指定ip和端口（通信板的）发送udp指令，开启数据采集功能  
-	void recv_data()：根据协议接收解析udp端口收到的通信板的单播/广播和链路状态数据，保存至用于各类查询方法的各类向量中。  
-1、	单播设备编号：目前包括30台无人机和2个地面站地雷。  
-2、	广播设备编号：目前包括30台无人机，2个地面站地雷，LG提供的通信网关设备  
-3、	链路状态信息设备编号：目前包括30台无人机和两个地面站地雷  
-4、	单播和链路状态的设备信息均为通信板的地址信息，只是名称上稍有差异；而广播设备信息使用的是与通信设备相连的TX2的网卡地址  
+	void start_cmd()：向指定ip和端口发送udp指令，开启数据采集功能  
+	void recv_data()：根据协议接收解析udp端口收到的通信板的单播/广播和链路状态数据，保存至用于各类查询方法的各类向量中。    
 	void timeToDate(struct timeval)：将时间戳转换为“年-月-日 时：分：秒”显示  
 	void unicast_show()：用于宿主代码调用查询显示实时单播数据  
 	void multicast_show()：用于宿主代码调用查询显示实时广播数据  
