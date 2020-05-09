@@ -1,25 +1,12 @@
 #include<stdlib.h>
 #include<unistd.h>
-#include<iomanip>
 #include<arpa/inet.h>
 #include<string.h>
 #include<sys/ioctl.h>
 #include<sys/time.h>
 #include<errno.h>
 #include<net/if.h>
-#include<mutex>
-#include<vector>
-#include<map>
 using namespace std;
-map<int,string> dic_comments;
-void init_dic(){
-    dic_comments[0]="robot_num";
-    dic_comments[1]="packets";
-    dic_comments[2]="data_length";
-    dic_comments[3]="speed";
-    dic_comments[4]="signal";
-    dic_comments[5]="error_rate";
-}
 int get_local_ip(const char *eth_inf,char *ip){
     int sd;
     struct sockaddr_in sin;

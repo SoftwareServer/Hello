@@ -10,12 +10,8 @@
 #include<qt5/QtCharts/QBarSet>
 #include<qt5/QtCharts/QBarCategoryAxis>
 #include<qt5/QtCharts/QPercentBarSeries>
-
-#include<QTableView>
 #include<QTimer>
-#include<QVector>
-#include<QStandardItemModel>
-
+#include<set>
 #include<mutex>
 
 QT_CHARTS_USE_NAMESPACE
@@ -27,7 +23,6 @@ struct host{            //similar to database
     std::string pid;    //process number
     std::string type;   //data type, such as int, float, double, string
     std::string value;
-    int comm_id;
     std::string comments;
 };
 
@@ -35,13 +30,11 @@ class Chart:public QMainWindow{
     Q_OBJECT
 
 public:
-    Chart(QWidget *parent=nullptr);
+    Chart(QWidget *parent=nullptr,std::string lineTitle="null",std::string barTitle="null");
     ~Chart();
     void timeToDate(struct timeval tv,char *time);
-    void process(int n,int comm);          //save data into vector<host>, as well as the same name method below
-    void process(float n,int comm);
-    //void process(double n);
-    //void process(std::string n);
+    void dataSave(int n,std::string comm);          //save data into vector<host>, as well as the same name method below
+    void dataSave(float n,std::string comm);
     void getData(int interval);   //save every type data periodly by SIGNAL 'timerUpdate'
 
 private slots:
@@ -49,7 +42,6 @@ private slots:
     void result();                //SLOT for 'timer', update chart for display
 
 private:
-    //QStandardItemModel *model;
     QChart *chartline;
     QChart *chartbar;
     QChartView *chartViewline;
@@ -67,11 +59,15 @@ private:
     QTimer timerUpdate;
     QList<float> data; // store data's list
     float sig;
+    QList<int> dataInt; // store data's list
+    int sigInt;
+    std::string lineTitle;
+    std::string barTitle;
     std::vector<host> host_data;
+    std::set<std::string> dic;
+    std::set<std::string> dicInt;
     std::mutex lock_s;
     int a;
     float b;
-    double c;
-    std::string d;
 };
 #endif
