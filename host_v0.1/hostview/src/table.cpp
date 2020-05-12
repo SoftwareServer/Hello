@@ -10,6 +10,7 @@ Table::Table(QWidget *parent): QTableView(parent){
     model->setHorizontalHeaderItem( 3, new QStandardItem( "pid" ) );
     model->setHorizontalHeaderItem( 4, new QStandardItem( "type" ) );
     model->setHorizontalHeaderItem( 5, new QStandardItem( "value" ) );
+    model->setHorizontalHeaderItem( 6, new QStandardItem( "comments" ) );
 
     connect(&timer, SIGNAL(timeout()), this, SLOT(result()));
     timer.start(2 * 1000);
@@ -21,12 +22,16 @@ Table::Table(QWidget *parent): QTableView(parent){
 }
 Table::~Table(){
     this->close();
+    if(NULL!=model){
+	delete model;
+	model=NULL;
+    }
 }
 void Table::update(){
-    process(++a);
-    process(++b);
-    process(++c);
-    process(d);
+    dataSave(++a,"num");
+    dataSave(++b,"speed");
+    dataSave(++c,"high");
+    dataSave(d,"note");
 }
 void Table::result(){
     if(!host_data.empty()){
@@ -38,6 +43,7 @@ void Table::result(){
 	    model->setItem(i,3,new QStandardItem(host_data[i].pid.c_str()));
 	    model->setItem(i,4,new QStandardItem(host_data[i].type.c_str()));
 	    model->setItem(i,5,new QStandardItem(host_data[i].value.c_str()));
+	    model->setItem(i,6,new QStandardItem(host_data[i].comments.c_str()));
 	}
 	lock_s.unlock();
     }
@@ -48,7 +54,7 @@ void Table::timeToDate(struct timeval tv,char *time){
     localtime_r(&tv.tv_sec,&tv_temp);
     snprintf(time,25,"%04d-%02d-%02d %02d:%02d:%02d.%03ld",tv_temp.tm_year+1900,tv_temp.tm_mon+1,tv_temp.tm_mday,tv_temp.tm_hour,tv_temp.tm_min,tv_temp.tm_sec,tv.tv_usec/1000);
 }
-void Table::process(int n){
+void Table::dataSave(int n,std::string comm){
     char ip_num[20] = "";
     get_local_ip("eth0",ip_num);
     struct timeval nowTus;
@@ -62,11 +68,12 @@ void Table::process(int n){
     temp.pid=to_string(getpid());
     temp.type="int";
     temp.value=to_string(n);
+    temp.comments=comm;
     lock_s.lock();
     host_data.push_back(temp);       //save data to "database", vector<host>
     lock_s.unlock();
 }
-void Table::process(float n){
+void Table::dataSave(float n,std::string comm){
     char ip_num[20] = "";
     get_local_ip("eth0",ip_num);
     struct timeval nowTus;
@@ -80,11 +87,12 @@ void Table::process(float n){
     temp.pid=to_string(getpid());
     temp.type="float";
     temp.value=to_string(n);
+    temp.comments=comm;
     lock_s.lock();
     host_data.push_back(temp);
     lock_s.unlock();
 }
-void Table::process(double n){
+void Table::dataSave(double n,std::string comm){
     char ip_num[20] = "";
     get_local_ip("eth0",ip_num);
     struct timeval nowTus;
@@ -98,11 +106,12 @@ void Table::process(double n){
     temp.pid=to_string(getpid());
     temp.type="double";
     temp.value=to_string(n);
+    temp.comments=comm;
     lock_s.lock();
     host_data.push_back(temp);
     lock_s.unlock();
 }
-void Table::process(string str){
+void Table::dataSave(string str,std::string comm){
     char ip_num[20] = "";
     get_local_ip("eth0",ip_num);
     struct timeval nowTus;
@@ -116,6 +125,7 @@ void Table::process(string str){
     temp.pid=to_string(getpid());
     temp.type="string";
     temp.value=str;
+    temp.comments=comm;
     lock_s.lock();
     host_data.push_back(temp);
     lock_s.unlock();

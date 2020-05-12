@@ -15,6 +15,7 @@ struct host{            //similar to database
     std::string pid;    //process number
     std::string type;   //data type, such as int, float, double, string
     std::string value;
+    std::string comments;
 };
 
 class Table:public QTableView{
@@ -24,10 +25,10 @@ public:
     Table(QWidget *parent=NULL);
     ~Table();
     void timeToDate(struct timeval tv,char *time);
-    void process(int n);          //save data into vector<host>, as well as the same name method below
-    void process(float n);
-    void process(double n);
-    void process(std::string n);
+    void dataSave(int n,std::string comm);          //save data into vector<host>, as well as the same name method below
+    void dataSave(float n,std::string comm);
+    void dataSave(double n,std::string comm);
+    void dataSave(std::string n,std::string comm);
     void getData(int interval);   //save every type data periodly by SIGNAL 'timerUpdate'
 
 private slots:
