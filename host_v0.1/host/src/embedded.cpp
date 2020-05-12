@@ -11,7 +11,10 @@
 #include<mutex>
 #include<vector>
 #include<map>
+#include<set>
 using namespace std;
+namespace dataStoreAndQuery{
+
 struct host{
     string id;
     string time;
@@ -19,18 +22,10 @@ struct host{
     string pid;
     string type;
     string value;
-    int comm_id;
     string comments;
 };
-map<int,string> dic_comments;
-void init_dic(){
-    dic_comments[0]="robot_num";
-    dic_comments[1]="packets";
-    dic_comments[2]="data_lenth";
-    dic_comments[3]="speed";
-    dic_comments[4]="signal";
-    dic_comments[5]="error_rate";
-}
+set<string> dic;
+set<string> dicInt;
 vector<host> host_data;  //similar to database
 mutex lock_s;
 int get_local_ip(const char *eth_inf,char *ip){
@@ -65,7 +60,7 @@ void timeToDate(struct timeval tv,char *time){
     localtime_r(&tv.tv_sec,&tv_temp);
     snprintf(time,25,"%04d-%02d-%02d %02d:%02d:%02d.%03ld",tv_temp.tm_year+1900,tv_temp.tm_mon+1,tv_temp.tm_mday,tv_temp.tm_hour,tv_temp.tm_min,tv_temp.tm_sec,tv.tv_usec/1000);
 }
-void process(int n,int comm){
+void dataSave(int n,string comm){
     char ip_num[20] = "";
     get_local_ip("eth0",ip_num);   //network card name
     struct timeval nowTus;
@@ -79,13 +74,13 @@ void process(int n,int comm){
     temp.pid=to_string(getpid());
     temp.type="int";
     temp.value=to_string(n);
-    temp.comm_id=comm;
-    temp.comments=dic_comments[comm];
+    temp.comments=comm;
     lock_s.lock();
+    dicInt.insert(comm);
     host_data.push_back(temp);    //insert to the struct
     lock_s.unlock();
 }
-void process(float n,int comm){
+void dataSave(float n,string comm){
     char ip_num[20] = "";
     get_local_ip("eth0",ip_num);
     struct timeval nowTus;
@@ -99,49 +94,12 @@ void process(float n,int comm){
     temp.pid=to_string(getpid());
     temp.type="float";
     temp.value=to_string(n);
-    temp.comm_id=comm;
-    temp.comments=dic_comments[comm];
+    temp.comments=comm;
     lock_s.lock();
+    dic.insert(comm);
     host_data.push_back(temp);
     lock_s.unlock();
 }
-/*void process(double n){
-    char ip_num[20] = "";
-    get_local_ip("eth0",ip_num);
-    struct timeval nowTus;
-    gettimeofday(&nowTus,NULL);
-    //timeToDate(nowTus);
-    char time[25]="";
-    timeToDate(nowTus,time);
-    host temp;
-    temp.id=to_string(host_data.size()+1);
-    temp.time=time;
-    temp.ip=ip_num;
-    temp.pid=to_string(getpid());
-    temp.type="double";
-    temp.value=to_string(n);
-    lock_s.lock();
-    host_data.push_back(temp);
-    lock_s.unlock();
-}
-void process(string str){
-    char ip_num[20] = "";
-    get_local_ip("eth0",ip_num);
-    struct timeval nowTus;
-    gettimeofday(&nowTus,NULL);
-    char time[25]="";
-    timeToDate(nowTus,time);
-    host temp;
-    temp.id=to_string(host_data.size()+1);
-    temp.time=time;
-    temp.ip=ip_num;
-    temp.pid=to_string(getpid());
-    temp.type="string";
-    temp.value=str;
-    lock_s.lock();
-    host_data.push_back(temp);
-    lock_s.unlock();
-}*/
 void cinString(string& data){
     data.clear();
     cin>>data;
@@ -170,15 +128,13 @@ void host_show(){  //query API
     int sel = -1;
     while(sel != 0){
         cout<<"#########################################################"<<endl;
-        cout<<"# 1. query all data \t\t 2. query of robot_num "<<endl;
-        cout<<"# 3. query of packets \t\t 4. query of data_lenth "<<endl;
-        cout<<"# 5. query of speed \t\t 6. query of signal "<<endl;
-        cout<<"# 7. query of error_rate\t 8. clear the history "<<endl;
+        cout<<"# 1. query all data \t\t 2. classification query "<<endl;
+        cout<<"# 3. clear the history "<<endl;
         cout<<"# 0. exit "<<endl;
         cout<<"#########################################################"<<endl;
         cout<<"choose your operation:";
-        if(!cinInt(sel) || sel < 0 || sel > 8){
-            cout<<"invalid input, please choose in [0-8]!"<<endl;
+        if(!cinInt(sel) || sel < 0 || sel > 3){
+            cout<<"invalid input, please choose in [0-3]!"<<endl;
             continue;
         }
 
@@ -190,7 +146,7 @@ void host_show(){  //query API
 		    for(int i=0;i<host_data.size();i++){
 			cout<<host_data[i].id<<"\t"<<host_data[i].time<<"\t"<<host_data[i].ip<<"\t"<<host_data[i].pid<<"\t"<<host_data[i].type<<"\t";
 			cout<<host_data[i].value.substr(0,6);//printf("%.*s",6,host_data[i].value.c_str());
-			cout<<"\t"<<host_data[i].comments<<"["<<host_data[i].comm_id<<"]"<<endl;
+			cout<<"\t"<<host_data[i].comments<<endl;
 		    }
 		    lock_s.unlock();
 		} else {
@@ -198,181 +154,183 @@ void host_show(){  //query API
 		}
                 break;
             }
-            case 2:{
-                if(!host_data.empty()){
-		    lock_s.lock();
-		    vector<int> temp;
-		    cout<<"No\t"<<"time"<<setw(13)<<"\t"<<"ip"<<setw(7)<<"\t"<<"pid\t"<<"type\t"<<"value\t"<<"comments"<<endl;
-		    for(int i=0;i<host_data.size();i++){
-			if(0==host_data[i].comm_id){
-			    temp.push_back(atoi(host_data[i].value.c_str()));
-			    cout<<host_data[i].id<<"\t"<<host_data[i].time<<"\t"<<host_data[i].ip<<"\t"<<host_data[i].pid<<"\t"<<host_data[i].type<<"\t";
-			    cout<<host_data[i].value.substr(0,6);
-			    cout<<"\t"<<host_data[i].comments<<"["<<host_data[i].comm_id<<"]"<<endl;
+	    case 2:{
+		map<int,string> queryDic;
+		if(!dic.empty()){
+		    cout<<"The dictionary of data(float) : "<<dic.size()<<endl;
+		    set<string>::iterator it=dic.begin();
+		    while(it!=dic.end()){
+			cout<<*it<<endl;
+			queryDic[queryDic.size()]=*it;
+			it++;
+		    }
+		    cout<<endl;
+		}
+		else{
+		    cout<<"The dictionary of data(float) has no member temporary"<<endl;
+		}
+		if(!dicInt.empty()){
+		    cout<<"The dictionary of data(int) : "<<dicInt.size()<<endl;
+		    set<string>::iterator it=dicInt.begin();
+		    while(it!=dicInt.end()){
+			cout<<*it<<endl;
+			queryDic[queryDic.size()]=*it;
+			it++;
+		    }
+		    cout<<endl;
+		}
+		else{
+		    cout<<"The dictionary of data(int) has no member temporary"<<endl;
+		}
+		int query=-1;
+		//cout<<"map size : "<<queryDic.size()<<endl;
+		while(0!=query){
+		    cout<<"========================================================="<<endl;
+		    if(!queryDic.empty()){
+			for(int i=0;i<queryDic.size();i++){
+			    if(0==i%2){
+				cout<<"* "<<(i+1)<<". query of "<<queryDic.at(i);
+				if(10<=queryDic.at(i).length()){
+				    cout<<"\t";
+				}else{
+				    cout<<"\t\t";
+				}
+			    }else{
+				cout<<(i+1)<<". query of "<<queryDic.at(i)<<endl;
+			    }
 			}
 		    }
-		    if(!temp.empty()){
-			float sum=accumulate(begin(temp),end(temp),0);
-			float mean=sum/temp.size();
-			cout<<"accumulate all the elements : "<<sum<<endl;
-			cout<<"mean of all the elements : "<<mean<<endl;
-			cout<<"max of all the elements : "<<*max_element(temp.begin(),temp.end())<<endl;
-			cout<<"min of all the elements : "<<*min_element(temp.begin(),temp.end())<<endl;
-		    } else {
-			cout<<"No such type data !"<<endl;
+		    if(1==queryDic.size()%2){
+			cout<<endl;
 		    }
-		    lock_s.unlock();
-		} else {
-		    cout<<"No data !"<<endl;
+		    cout<<"* 0. return main menu "<<endl;
+		    cout<<"========================================================="<<endl;
+		    cout<<"choose your operation:";
+		    if(!cinInt(query) || query < 0 || query > queryDic.size()){
+			cout<<"invalid input, please choose in [0-"<<queryDic.size()<<"]!"<<endl;
+			continue;
+		    }
+		    if(query){
+			cout<<"========================================================="<<endl;
+			cout<<"1. mean of "<<queryDic.at(query-1)<<endl;
+			cout<<"2. max of "<<queryDic.at(query-1)<<endl;
+			cout<<"3. min of "<<queryDic.at(query-1)<<endl;
+			cout<<"4. accumulate of "<<queryDic.at(query-1)<<endl;
+			cout<<"0. return last menu "<<endl;
+			cout<<"========================================================="<<endl;
+			cout<<"choose your operation:";
+			int classify=-1;
+			if(!cinInt(classify) || classify < 0 || classify > 4){
+			    cout<<"invalid input, please choose in [0-3]!"<<endl;
+			    continue;
+			}
+			switch(classify){
+			    case 1:{
+				if(!host_data.empty()){
+				    lock_s.lock();
+				    vector<float> temp;
+				    cout<<"No\t"<<"time"<<setw(13)<<"\t"<<"ip"<<setw(7)<<"\t"<<"pid\t"<<"type\t"<<"value\t"<<"comments"<<endl;
+				    for(int i=0;i<host_data.size();i++){
+					if(host_data[i].comments==queryDic.at(query-1)){
+					    temp.push_back(atof(host_data[i].value.c_str()));
+					    cout<<host_data[i].id<<"\t"<<host_data[i].time<<"\t"<<host_data[i].ip<<"\t"<<host_data[i].pid<<"\t"<<host_data[i].type<<"\t";
+					    cout<<host_data[i].value.substr(0,6);
+					    cout<<"\t"<<host_data[i].comments<<endl;
+					}
+				    }
+				    if(!temp.empty()){
+					float sum=accumulate(begin(temp),end(temp),0.0);
+					float mean=sum/temp.size();
+					cout<<"mean of all the elements : "<<mean<<endl;
+				    } else {
+					cout<<"No such type data !"<<endl;
+				    }
+				    lock_s.unlock();
+				}else {
+				    cout<<"No data !"<<endl;
+				}
+				break;
+			    }
+			    case 2:{
+				if(!host_data.empty()){
+				    lock_s.lock();
+				    vector<float> temp;
+				    cout<<"No\t"<<"time"<<setw(13)<<"\t"<<"ip"<<setw(7)<<"\t"<<"pid\t"<<"type\t"<<"value\t"<<"comments"<<endl;
+				    for(int i=0;i<host_data.size();i++){
+					if(host_data[i].comments==queryDic.at(query-1)){
+					    temp.push_back(atof(host_data[i].value.c_str()));
+					    cout<<host_data[i].id<<"\t"<<host_data[i].time<<"\t"<<host_data[i].ip<<"\t"<<host_data[i].pid<<"\t"<<host_data[i].type<<"\t";
+					    cout<<host_data[i].value.substr(0,6);
+					    cout<<"\t"<<host_data[i].comments<<endl;
+					}
+				    }
+				    if(!temp.empty()){
+					cout<<"max of all the elements : "<<*max_element(temp.begin(),temp.end())<<endl;
+				    } else {
+					cout<<"No such type data !"<<endl;
+				    }
+				    lock_s.unlock();
+				}else {
+				    cout<<"No data !"<<endl;
+				}
+				break;
+			    }
+			    case 3:{
+				if(!host_data.empty()){
+				    lock_s.lock();
+				    vector<float> temp;
+				    cout<<"No\t"<<"time"<<setw(13)<<"\t"<<"ip"<<setw(7)<<"\t"<<"pid\t"<<"type\t"<<"value\t"<<"comments"<<endl;
+				    for(int i=0;i<host_data.size();i++){
+					if(host_data[i].comments==queryDic.at(query-1)){
+					    temp.push_back(atof(host_data[i].value.c_str()));
+					    cout<<host_data[i].id<<"\t"<<host_data[i].time<<"\t"<<host_data[i].ip<<"\t"<<host_data[i].pid<<"\t"<<host_data[i].type<<"\t";
+					    cout<<host_data[i].value.substr(0,6);
+					    cout<<"\t"<<host_data[i].comments<<endl;
+					}
+				    }
+				    if(!temp.empty()){
+					cout<<"min of all the elements : "<<*min_element(temp.begin(),temp.end())<<endl;
+				    } else {
+					cout<<"No such type data !"<<endl;
+				    }
+				    lock_s.unlock();
+				}else {
+				    cout<<"No data !"<<endl;
+				}
+				break;
+			    }
+			    case 4:{
+				if(!host_data.empty()){
+				    lock_s.lock();
+				    vector<float> temp;
+				    cout<<"No\t"<<"time"<<setw(13)<<"\t"<<"ip"<<setw(7)<<"\t"<<"pid\t"<<"type\t"<<"value\t"<<"comments"<<endl;
+				    for(int i=0;i<host_data.size();i++){
+					if(host_data[i].comments==queryDic.at(query-1)){
+					    temp.push_back(atof(host_data[i].value.c_str()));
+					    cout<<host_data[i].id<<"\t"<<host_data[i].time<<"\t"<<host_data[i].ip<<"\t"<<host_data[i].pid<<"\t"<<host_data[i].type<<"\t";
+					    cout<<host_data[i].value.substr(0,6);
+					    cout<<"\t"<<host_data[i].comments<<endl;
+					}
+				    }
+				    if(!temp.empty()){
+					float sum=accumulate(begin(temp),end(temp),0.0);
+					cout<<"accumulate all the elements : "<<sum<<endl;
+				    } else {
+					cout<<"No such type data !"<<endl;
+				    }
+				    lock_s.unlock();
+				}else {
+				    cout<<"No data !"<<endl;
+				}
+				break;
+			    }
+			    default: break;
+			}
+		    }
 		}
-                break;
-            }
+		break;
+	    }
             case 3:{
-                if(!host_data.empty()){
-		    lock_s.lock();
-		    vector<int> temp;
-		    cout<<"No\t"<<"time"<<setw(13)<<"\t"<<"ip"<<setw(7)<<"\t"<<"pid\t"<<"type\t"<<"value\t"<<"comments"<<endl;
-		    for(int i=0;i<host_data.size();i++){
-			if(1==host_data[i].comm_id){
-			    temp.push_back(atoi(host_data[i].value.c_str()));
-			    cout<<host_data[i].id<<"\t"<<host_data[i].time<<"\t"<<host_data[i].ip<<"\t"<<host_data[i].pid<<"\t"<<host_data[i].type<<"\t";
-			    cout<<host_data[i].value.substr(0,6);
-			    cout<<"\t"<<host_data[i].comments<<"["<<host_data[i].comm_id<<"]"<<endl;
-			}
-		    }
-		    if(!temp.empty()){
-			float sum=accumulate(begin(temp),end(temp),0);
-			float mean=sum/temp.size();
-			cout<<"accumulate all the elements : "<<sum<<endl;
-			cout<<"mean of all the elements : "<<mean<<endl;
-			cout<<"max of all the elements : "<<*max_element(temp.begin(),temp.end())<<endl;
-			cout<<"min of all the elements : "<<*min_element(temp.begin(),temp.end())<<endl;
-		    } else {
-			cout<<"No such type data !"<<endl;
-		    }
-		    lock_s.unlock();
-		} else {
-		    cout<<"No data !"<<endl;
-		}
-                break;
-            }
-            case 4:{
-                if(!host_data.empty()){
-		    lock_s.lock();
-		    vector<int> temp;
-		    cout<<"No\t"<<"time"<<setw(13)<<"\t"<<"ip"<<setw(7)<<"\t"<<"pid\t"<<"type\t"<<"value\t"<<"comments"<<endl;
-		    for(int i=0;i<host_data.size();i++){
-			if(2==host_data[i].comm_id){
-			    temp.push_back(atoi(host_data[i].value.c_str()));
-			    cout<<host_data[i].id<<"\t"<<host_data[i].time<<"\t"<<host_data[i].ip<<"\t"<<host_data[i].pid<<"\t"<<host_data[i].type<<"\t";
-			    cout<<host_data[i].value.substr(0,6);
-			    cout<<"\t"<<host_data[i].comments<<"["<<host_data[i].comm_id<<"]"<<endl;
-			}
-		    }
-		    if(!temp.empty()){
-			float sum=accumulate(begin(temp),end(temp),0);
-			float mean=sum/temp.size();
-			cout<<"accumulate all the elements : "<<sum<<endl;
-			cout<<"mean of all the elements : "<<mean<<endl;
-			cout<<"max of all the elements : "<<*max_element(temp.begin(),temp.end())<<endl;
-			cout<<"min of all the elements : "<<*min_element(temp.begin(),temp.end())<<endl;
-		    } else {
-			cout<<"No such type data !"<<endl;
-		    }
-		    lock_s.unlock();
-		} else {
-		    cout<<"No data !"<<endl;
-		}
-                break;
-            }
-            case 5:{
-                if(!host_data.empty()){
-		    lock_s.lock();
-		    vector<float> temp;
-		    cout<<"No\t"<<"time"<<setw(13)<<"\t"<<"ip"<<setw(7)<<"\t"<<"pid\t"<<"type\t"<<"value\t"<<"comments"<<endl;
-		    for(int i=0;i<host_data.size();i++){
-			if(3==host_data[i].comm_id){
-			    temp.push_back(atof(host_data[i].value.c_str()));
-			    cout<<host_data[i].id<<"\t"<<host_data[i].time<<"\t"<<host_data[i].ip<<"\t"<<host_data[i].pid<<"\t"<<host_data[i].type<<"\t";
-			    cout<<host_data[i].value.substr(0,6);
-			    cout<<"\t"<<host_data[i].comments<<"["<<host_data[i].comm_id<<"]"<<endl;
-			}
-		    }
-		    if(!temp.empty()){
-			float sum=accumulate(begin(temp),end(temp),0.0);
-			float mean=sum/temp.size();
-			cout<<"accumulate all the elements : "<<sum<<endl;
-			cout<<"mean of all the elements : "<<mean<<endl;
-			cout<<"max of all the elements : "<<*max_element(temp.begin(),temp.end())<<endl;
-			cout<<"min of all the elements : "<<*min_element(temp.begin(),temp.end())<<endl;
-		    } else {
-			cout<<"No such type data !"<<endl;
-		    }
-		    lock_s.unlock();
-		} else {
-		    cout<<"No data !"<<endl;
-		}
-                break;
-            }
-            case 6:{
-                if(!host_data.empty()){
-		    lock_s.lock();
-		    vector<float> temp;
-		    cout<<"No\t"<<"time"<<setw(13)<<"\t"<<"ip"<<setw(7)<<"\t"<<"pid\t"<<"type\t"<<"value\t"<<"comments"<<endl;
-		    for(int i=0;i<host_data.size();i++){
-			if(4==host_data[i].comm_id){
-			    temp.push_back(atof(host_data[i].value.c_str()));
-			    cout<<host_data[i].id<<"\t"<<host_data[i].time<<"\t"<<host_data[i].ip<<"\t"<<host_data[i].pid<<"\t"<<host_data[i].type<<"\t";
-			    cout<<host_data[i].value.substr(0,6);
-			    cout<<"\t"<<host_data[i].comments<<"["<<host_data[i].comm_id<<"]"<<endl;
-			}
-		    }
-		    if(!temp.empty()){
-			float sum=accumulate(begin(temp),end(temp),0.0);
-			float mean=sum/temp.size();
-			cout<<"accumulate all the elements : "<<sum<<endl;
-			cout<<"mean of all the elements : "<<mean<<endl;
-			cout<<"max of all the elements : "<<*max_element(temp.begin(),temp.end())<<endl;
-			cout<<"min of all the elements : "<<*min_element(temp.begin(),temp.end())<<endl;
-		    } else {
-			cout<<"No such type data !"<<endl;
-		    }
-		    lock_s.unlock();
-		} else {
-		    cout<<"No data !"<<endl;
-		}
-                break;
-            }
-            case 7:{
-                if(!host_data.empty()){
-		    lock_s.lock();
-		    vector<float> temp;
-		    cout<<"No\t"<<"time"<<setw(13)<<"\t"<<"ip"<<setw(7)<<"\t"<<"pid\t"<<"type\t"<<"value\t"<<"comments"<<endl;
-		    for(int i=0;i<host_data.size();i++){
-			if(5==host_data[i].comm_id){
-			    temp.push_back(atof(host_data[i].value.c_str()));
-			    cout<<host_data[i].id<<"\t"<<host_data[i].time<<"\t"<<host_data[i].ip<<"\t"<<host_data[i].pid<<"\t"<<host_data[i].type<<"\t";
-			    cout<<host_data[i].value.substr(0,6);
-			    cout<<"\t"<<host_data[i].comments<<"["<<host_data[i].comm_id<<"]"<<endl;
-			}
-		    }
-		    if(!temp.empty()){
-			float sum=accumulate(begin(temp),end(temp),0.0);
-			float mean=sum/temp.size();
-			cout<<"accumulate all the elements : "<<sum<<endl;
-			cout<<"mean of all the elements : "<<mean<<endl;
-			cout<<"max of all the elements : "<<*max_element(temp.begin(),temp.end())<<endl;
-			cout<<"min of all the elements : "<<*min_element(temp.begin(),temp.end())<<endl;
-		    } else {
-			cout<<"No such type data !"<<endl;
-		    }
-		    lock_s.unlock();
-		} else {
-		    cout<<"No data !"<<endl;
-		}
-                break;
-            }
-            case 8:{
                 lock_s.lock();
 		host_data.clear();
                 lock_s.unlock();
@@ -384,3 +342,5 @@ void host_show(){  //query API
     }
     exit(0);
 }
+
+} /* namespace dataStoreAndQuery */
