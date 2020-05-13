@@ -14,16 +14,15 @@
 #include<set>
 using namespace std;
 namespace dataStoreAndQuery{
-
 struct host{
     string id;
-    string time;
-    string ip;
-    string pid;
-    string type;
+    string nodeId;
+    string timetag;
+    string attribute;
     string value;
-    string comments;
+    string notes;
 };
+set<string> dicIp;
 set<string> dic;
 set<string> dicInt;
 vector<host> host_data;  //similar to database
@@ -60,7 +59,7 @@ void timeToDate(struct timeval tv,char *time){
     localtime_r(&tv.tv_sec,&tv_temp);
     snprintf(time,25,"%04d-%02d-%02d %02d:%02d:%02d.%03ld",tv_temp.tm_year+1900,tv_temp.tm_mon+1,tv_temp.tm_mday,tv_temp.tm_hour,tv_temp.tm_min,tv_temp.tm_sec,tv.tv_usec/1000);
 }
-void dataSave(int n,string comm){
+void dataSave(int n,string attribute,string notes=""){
     char ip_num[20] = "";
     get_local_ip("eth0",ip_num);   //network card name
     struct timeval nowTus;
@@ -69,18 +68,18 @@ void dataSave(int n,string comm){
     timeToDate(nowTus,time);
     host temp;
     temp.id=to_string(host_data.size()+1);
-    temp.time=time;
-    temp.ip=ip_num;
-    temp.pid=to_string(getpid());
-    temp.type="int";
+    temp.nodeId=ip_num;
+    temp.timetag=time;
+    temp.attribute=attribute;
     temp.value=to_string(n);
-    temp.comments=comm;
+    temp.notes=notes;
     lock_s.lock();
-    dicInt.insert(comm);
+    dicInt.insert(attribute);
+    dicIp.insert(ip_num);
     host_data.push_back(temp);    //insert to the struct
     lock_s.unlock();
 }
-void dataSave(float n,string comm){
+void dataSave(float n,string attribute,string notes=""){
     char ip_num[20] = "";
     get_local_ip("eth0",ip_num);
     struct timeval nowTus;
@@ -89,16 +88,123 @@ void dataSave(float n,string comm){
     timeToDate(nowTus,time);
     host temp;
     temp.id=to_string(host_data.size()+1);
-    temp.time=time;
-    temp.ip=ip_num;
-    temp.pid=to_string(getpid());
-    temp.type="float";
+    temp.nodeId=ip_num;
+    temp.timetag=time;
+    temp.attribute=attribute;
     temp.value=to_string(n);
-    temp.comments=comm;
+    temp.notes=notes;
     lock_s.lock();
-    dic.insert(comm);
+    dic.insert(attribute);
+    dicIp.insert(ip_num);
     host_data.push_back(temp);
     lock_s.unlock();
+}
+float dataQuery(string id,string attribute){
+    float res=-1;
+    set<string>::iterator it;
+    if((it=dicIp.find(id))!=dicIp.end()){
+    }
+    else{
+	cout<<"The id hasn't exist"<<endl;
+	return -1;
+    }
+    if((it=dic.find(attribute))!=dic.end()){
+    }
+    else if((it=dicInt.find(attribute))!=dicInt.end()){
+    }
+    else{
+	cout<<"The attribute hasn't exist"<<endl;
+	return -1;
+    }
+    if(!host_data.empty()){
+	lock_s.lock();
+	for(int i=host_data.size()-1;i>0;i--){
+	    if(host_data[i].nodeId==id&&host_data[i].attribute==attribute){
+		res=(atof(host_data[i].value.c_str()));
+		break;
+	    }
+	}
+	lock_s.unlock();
+    }
+    return res;
+}
+float dataStatics(struct timeval tv,struct timeval tv1,string attribute,string statics){
+    if("average"==statics || "max"==statics || "min"==statics || "accumulate"==statics){
+    }
+    else{
+	cout<<"please input the statics method, 'average','max','min','accumulate'"<<endl;
+	return -1;
+    }
+    char time1[25]="";
+    timeToDate(tv,time1);
+    char time2[25]="";
+    timeToDate(tv1,time2);
+    float res=-1;
+    set<string>::iterator it;
+    if((it=dic.find(attribute))!=dic.end()){
+    }
+    else if((it=dicInt.find(attribute))!=dicInt.end()){
+    }
+    else{
+	cout<<"The attribute hasn't exist"<<endl;
+	return -1;
+    }
+    if(!host_data.empty()){
+	lock_s.lock();
+	vector<float> temp;
+	if(strcmp(time1,time2)<0){
+	    for(int i=0;i<host_data.size();i++){
+		if(strcmp(time1,host_data[i].timetag.c_str())<0 && strcmp(time2,host_data[i].timetag.c_str())>0 && host_data[i].attribute==attribute){
+		    temp.push_back(atof(host_data[i].value.c_str()));
+		}
+	    }
+	    if(!temp.empty()){
+		float sum=accumulate(begin(temp),end(temp),0.0);
+		float mean=sum/temp.size();
+		if("average"==statics){
+		    res=mean;
+		}
+		if("max"==statics){
+		    res=*max_element(temp.begin(),temp.end());
+		}
+		if("min"==statics){
+		    res=*min_element(temp.begin(),temp.end());
+		}
+		if("accumulate"==statics){
+		    res=sum;
+		}
+	    } else {
+		cout<<"No such type data !"<<endl;
+	    }
+	}
+	else{
+	    for(int i=0;i<host_data.size();i++){
+		if(strcmp(time2,host_data[i].timetag.c_str())<0 && strcmp(time1,host_data[i].timetag.c_str())>0 && host_data[i].attribute==attribute){
+		    temp.push_back(atof(host_data[i].value.c_str()));
+		}
+	    }
+	    if(!temp.empty()){
+		float sum=accumulate(begin(temp),end(temp),0.0);
+		float mean=sum/temp.size();
+		if("average"==statics){
+		    res=mean;
+		}
+		if("max"==statics){
+		    res=*max_element(temp.begin(),temp.end());
+		}
+		if("min"==statics){
+		    res=*min_element(temp.begin(),temp.end());
+		}
+		if("accumulate"==statics){
+		    res=sum;
+		}
+	    } else {
+		cout<<"No such type data !"<<endl;
+	    }
+	}
+	lock_s.unlock();
+    }
+    return res;
 }
 void cinString(string& data){
     data.clear();
@@ -142,11 +248,15 @@ void host_show(){  //query API
             case 1:{
                 if(!host_data.empty()){
 		    lock_s.lock();
-		    cout<<"No\t"<<"time"<<setw(13)<<"\t"<<"ip"<<setw(7)<<"\t"<<"pid\t"<<"type\t"<<"value\t"<<"comments"<<endl;
+		    cout<<"No\t"<<"nodeId"<<setw(3)<<"\t"<<"time"<<setw(13)<<"\t"<<"attribute\t"<<"value\t"<<"notes"<<endl;
 		    for(int i=0;i<host_data.size();i++){
-			cout<<host_data[i].id<<"\t"<<host_data[i].time<<"\t"<<host_data[i].ip<<"\t"<<host_data[i].pid<<"\t"<<host_data[i].type<<"\t";
-			cout<<host_data[i].value.substr(0,6);//printf("%.*s",6,host_data[i].value.c_str());
-			cout<<"\t"<<host_data[i].comments<<endl;
+			cout<<host_data[i].id<<"\t"<<host_data[i].nodeId<<"\t"<<host_data[i].timetag<<"\t";
+			if(9>host_data[i].attribute.length()){
+			    cout<<host_data[i].attribute<<"\t\t";
+			}else{
+			    cout<<host_data[i].attribute<<"\t";
+			}
+			cout<<host_data[i].value.substr(0,6)<<"\t"<<host_data[i].notes<<endl;
 		    }
 		    lock_s.unlock();
 		} else {
@@ -229,13 +339,17 @@ void host_show(){  //query API
 				if(!host_data.empty()){
 				    lock_s.lock();
 				    vector<float> temp;
-				    cout<<"No\t"<<"time"<<setw(13)<<"\t"<<"ip"<<setw(7)<<"\t"<<"pid\t"<<"type\t"<<"value\t"<<"comments"<<endl;
+				    cout<<"No\t"<<"nodeId"<<setw(3)<<"\t"<<"time"<<setw(13)<<"\t"<<"attribute\t"<<"value\t"<<"notes"<<endl;
 				    for(int i=0;i<host_data.size();i++){
-					if(host_data[i].comments==queryDic.at(query-1)){
+					if(host_data[i].attribute==queryDic.at(query-1)){
 					    temp.push_back(atof(host_data[i].value.c_str()));
-					    cout<<host_data[i].id<<"\t"<<host_data[i].time<<"\t"<<host_data[i].ip<<"\t"<<host_data[i].pid<<"\t"<<host_data[i].type<<"\t";
-					    cout<<host_data[i].value.substr(0,6);
-					    cout<<"\t"<<host_data[i].comments<<endl;
+					    cout<<host_data[i].id<<"\t"<<host_data[i].nodeId<<"\t"<<host_data[i].timetag<<"\t";
+					    if(9>host_data[i].attribute.length()){
+						cout<<host_data[i].attribute<<"\t\t";
+					    }else{
+						cout<<host_data[i].attribute<<"\t";
+					    }
+					    cout<<host_data[i].value.substr(0,6)<<"\t"<<host_data[i].notes<<endl;
 					}
 				    }
 				    if(!temp.empty()){
@@ -255,13 +369,17 @@ void host_show(){  //query API
 				if(!host_data.empty()){
 				    lock_s.lock();
 				    vector<float> temp;
-				    cout<<"No\t"<<"time"<<setw(13)<<"\t"<<"ip"<<setw(7)<<"\t"<<"pid\t"<<"type\t"<<"value\t"<<"comments"<<endl;
+				    cout<<"No\t"<<"nodeId"<<setw(3)<<"\t"<<"time"<<setw(13)<<"\t"<<"attribute\t"<<"value\t"<<"notes"<<endl;
 				    for(int i=0;i<host_data.size();i++){
-					if(host_data[i].comments==queryDic.at(query-1)){
+					if(host_data[i].attribute==queryDic.at(query-1)){
 					    temp.push_back(atof(host_data[i].value.c_str()));
-					    cout<<host_data[i].id<<"\t"<<host_data[i].time<<"\t"<<host_data[i].ip<<"\t"<<host_data[i].pid<<"\t"<<host_data[i].type<<"\t";
-					    cout<<host_data[i].value.substr(0,6);
-					    cout<<"\t"<<host_data[i].comments<<endl;
+					    cout<<host_data[i].id<<"\t"<<host_data[i].nodeId<<"\t"<<host_data[i].timetag<<"\t";
+					    if(9>host_data[i].attribute.length()){
+						cout<<host_data[i].attribute<<"\t\t";
+					    }else{
+						cout<<host_data[i].attribute<<"\t";
+					    }
+					    cout<<host_data[i].value.substr(0,6)<<"\t"<<host_data[i].notes<<endl;
 					}
 				    }
 				    if(!temp.empty()){
@@ -281,11 +399,15 @@ void host_show(){  //query API
 				    vector<float> temp;
 				    cout<<"No\t"<<"time"<<setw(13)<<"\t"<<"ip"<<setw(7)<<"\t"<<"pid\t"<<"type\t"<<"value\t"<<"comments"<<endl;
 				    for(int i=0;i<host_data.size();i++){
-					if(host_data[i].comments==queryDic.at(query-1)){
+					if(host_data[i].attribute==queryDic.at(query-1)){
 					    temp.push_back(atof(host_data[i].value.c_str()));
-					    cout<<host_data[i].id<<"\t"<<host_data[i].time<<"\t"<<host_data[i].ip<<"\t"<<host_data[i].pid<<"\t"<<host_data[i].type<<"\t";
-					    cout<<host_data[i].value.substr(0,6);
-					    cout<<"\t"<<host_data[i].comments<<endl;
+					    cout<<host_data[i].id<<"\t"<<host_data[i].nodeId<<"\t"<<host_data[i].timetag<<"\t";
+					    if(9>host_data[i].attribute.length()){
+						cout<<host_data[i].attribute<<"\t\t";
+					    }else{
+						cout<<host_data[i].attribute<<"\t";
+					    }
+					    cout<<host_data[i].value.substr(0,6)<<"\t"<<host_data[i].notes<<endl;
 					}
 				    }
 				    if(!temp.empty()){
@@ -305,11 +427,15 @@ void host_show(){  //query API
 				    vector<float> temp;
 				    cout<<"No\t"<<"time"<<setw(13)<<"\t"<<"ip"<<setw(7)<<"\t"<<"pid\t"<<"type\t"<<"value\t"<<"comments"<<endl;
 				    for(int i=0;i<host_data.size();i++){
-					if(host_data[i].comments==queryDic.at(query-1)){
+					if(host_data[i].attribute==queryDic.at(query-1)){
 					    temp.push_back(atof(host_data[i].value.c_str()));
-					    cout<<host_data[i].id<<"\t"<<host_data[i].time<<"\t"<<host_data[i].ip<<"\t"<<host_data[i].pid<<"\t"<<host_data[i].type<<"\t";
-					    cout<<host_data[i].value.substr(0,6);
-					    cout<<"\t"<<host_data[i].comments<<endl;
+					    cout<<host_data[i].id<<"\t"<<host_data[i].nodeId<<"\t"<<host_data[i].timetag<<"\t";
+					    if(9>host_data[i].attribute.length()){
+						cout<<host_data[i].attribute<<"\t\t";
+					    }else{
+						cout<<host_data[i].attribute<<"\t";
+					    }
+					    cout<<host_data[i].value.substr(0,6)<<"\t"<<host_data[i].notes<<endl;
 					}
 				    }
 				    if(!temp.empty()){
